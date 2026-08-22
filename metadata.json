@@ -1,0 +1,8 @@
+{
+  "name": "Pomodoro-Timer",
+  "description": "Ein konfigurierbarer Pomodoro-Timer im GNOME-Panel mit Fokuszeiten, Pausen und Runden.",
+  "uuid": "pomodoro-timer@local",
+  "settings-schema": "org.gnome.shell.extensions.pomodoro-timer",
+  "shell-version": ["48", "49", "50"],
+  "version": 5
+}

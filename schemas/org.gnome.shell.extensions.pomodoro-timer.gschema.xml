@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.pomodoro-timer" path="/org/gnome/shell/extensions/pomodoro-timer/">
+    <key name="focus-minutes" type="i">
+      <range min="1" max="120"/>
+      <default>25</default>
+      <summary>Dauer der Fokusphase</summary>
+    </key>
+    <key name="short-break-minutes" type="i">
+      <range min="1" max="60"/>
+      <default>5</default>
+      <summary>Dauer der kurzen Pause</summary>
+    </key>
+    <key name="long-break-minutes" type="i">
+      <range min="1" max="120"/>
+      <default>15</default>
+      <summary>Dauer der langen Pause</summary>
+    </key>
+    <key name="rounds-before-long-break" type="i">
+      <range min="1" max="12"/>
+      <default>4</default>
+      <summary>Fokusrunden bis zur langen Pause</summary>
+    </key>
+    <key name="auto-start-next" type="b">
+      <default>false</default>
+      <summary>Nächste Phase automatisch starten</summary>
+    </key>
+    <key name="show-notifications" type="b">
+      <default>true</default>
+      <summary>Benachrichtigungen anzeigen</summary>
+    </key>
+    <key name="tasks-json" type="s">
+      <default>'[]'</default>
+      <summary>Gespeicherte Aufgaben im JSON-Format</summary>
+    </key>
+  </schema>
+</schemalist>

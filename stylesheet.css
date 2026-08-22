@@ -1,0 +1,72 @@
+.pomodoro-panel-label {
+    margin-left: 2px;
+    margin-right: 4px;
+    font-feature-settings: "tnum";
+}
+
+.pomodoro-task-ticker {
+    max-width: 220px;
+    margin-right: 5px;
+    color: rgba(255, 255, 255, 0.78);
+    font-style: italic;
+}
+
+.pomodoro-header {
+    padding-top: 6px;
+    padding-bottom: 8px;
+}
+
+.pomodoro-phase {
+    margin-bottom: 2px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.pomodoro-time {
+    font-size: 2em;
+    font-weight: bold;
+    font-feature-settings: "tnum";
+    text-align: center;
+}
+
+.pomodoro-task-row {
+    padding: 1px 12px;
+}
+
+.pomodoro-task-button {
+    width: 300px;
+    padding: 5px 8px;
+    border-radius: 7px;
+}
+
+.pomodoro-task-button:hover,
+.pomodoro-task-button:focus {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.pomodoro-task-check {
+    margin-right: 8px;
+    icon-size: 16px;
+}
+
+.pomodoro-task-label {
+    max-width: 260px;
+}
+
+.pomodoro-task-button.completed .pomodoro-task-label {
+    color: rgba(255, 255, 255, 0.48);
+}
+
+.pomodoro-task-empty {
+    color: rgba(255, 255, 255, 0.48);
+    font-style: italic;
+}
+
+.pomodoro-task-input-row {
+    padding: 3px 12px 6px;
+}
+
+.pomodoro-task-entry {
+    width: 300px;
+    padding: 3px 7px;
+}
