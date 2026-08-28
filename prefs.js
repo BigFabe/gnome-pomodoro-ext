@@ -63,7 +63,7 @@ export default class PomodoroTimerPreferences extends ExtensionPreferences {
 
         const autoStartRow = new Adw.SwitchRow({
             title: 'Nächste Phase automatisch starten',
-            subtitle: 'Startet Pausen und Fokus-Runden ohne weitere Eingabe',
+            subtitle: 'Startet Folgephasen innerhalb eines Satzes ohne weitere Eingabe',
         });
         settings.bind(
             'auto-start-next',

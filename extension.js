@@ -14,12 +14,22 @@ const Phase = Object.freeze({
     LONG_BREAK: 'long-break',
 });
 
+const MAX_OVERTIME_SECONDS = 10 * 60;
+const COLOR_WHITE = Object.freeze([255, 255, 255]);
+const COLOR_GREEN = Object.freeze([64, 255, 64]);
+const COLOR_YELLOW = Object.freeze([255, 255, 64]);
+const COLOR_RED = Object.freeze([255, 64, 64]);
+
 export default class PomodoroTimerExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._phase = Phase.FOCUS;
         this._completedFocusSessions = 0;
         this._running = false;
+        this._sessionActive = false;
+        this._awaitingNextPhase = false;
+        this._overtimeStartUsec = 0;
+        this._overtimeSeconds = 0;
         this._timeoutId = 0;
         this._tickerTimeoutId = 0;
         this._tickerTaskId = null;
@@ -207,6 +217,12 @@ export default class PomodoroTimerExtension extends Extension {
         if (this._running)
             return;
 
+        if (this._awaitingNextPhase) {
+            this._clearOvertime();
+            this._remainingSeconds = this._durationForPhase(this._phase);
+        }
+
+        this._sessionActive = true;
         this._running = true;
         this._deadlineUsec = GLib.get_monotonic_time() + this._remainingSeconds * 1_000_000;
         this._scheduleTimeout();
@@ -226,6 +242,8 @@ export default class PomodoroTimerExtension extends Extension {
 
     _stop() {
         this._running = false;
+        this._sessionActive = false;
+        this._clearOvertime();
         this._removeTimeout();
         this._remainingSeconds = this._durationForPhase(this._phase);
         this._clearTasks();
@@ -239,7 +257,7 @@ export default class PomodoroTimerExtension extends Extension {
             if (difference <= 0) {
                 this._timeoutId = 0;
                 this._remainingSeconds = 0;
-                this._advancePhase(true);
+                this._advancePhase(true, this._deadlineUsec);
                 return GLib.SOURCE_REMOVE;
             }
 
@@ -256,9 +274,48 @@ export default class PomodoroTimerExtension extends Extension {
         }
     }
 
-    _advancePhase(completedNaturally) {
+    _beginOvertime(startUsec) {
+        if (!this._sessionActive)
+            return;
+
+        this._awaitingNextPhase = true;
+        this._overtimeStartUsec = startUsec;
+        this._overtimeSeconds = Math.max(0, Math.floor(
+            (GLib.get_monotonic_time() - startUsec) / 1_000_000));
+        this._scheduleOvertimeTimeout();
+        this._updateUi();
+    }
+
+    _scheduleOvertimeTimeout() {
+        this._removeTimeout();
+        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+            if (!this._sessionActive || !this._awaitingNextPhase) {
+                this._timeoutId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+
+            const overtimeSeconds = Math.max(0, Math.floor(
+                (GLib.get_monotonic_time() - this._overtimeStartUsec) / 1_000_000));
+            if (overtimeSeconds !== this._overtimeSeconds) {
+                this._overtimeSeconds = overtimeSeconds;
+                this._updateUi();
+            }
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    _clearOvertime() {
+        this._awaitingNextPhase = false;
+        this._overtimeStartUsec = 0;
+        this._overtimeSeconds = 0;
+        this._clearTimerColor();
+    }
+
+    _advancePhase(completedNaturally, completedAtUsec = 0) {
         const previousPhase = this._phase;
+        const completedSet = previousPhase === Phase.LONG_BREAK;
         this._running = false;
+        this._clearOvertime();
         this._removeTimeout();
 
         if (previousPhase === Phase.FOCUS) {
@@ -273,16 +330,23 @@ export default class PomodoroTimerExtension extends Extension {
 
         this._remainingSeconds = this._durationForPhase(this._phase);
 
-        if (previousPhase === Phase.LONG_BREAK)
+        if (completedSet) {
+            this._sessionActive = false;
             this._clearTasks();
+        }
 
         if (completedNaturally)
             this._notifyPhaseFinished(previousPhase);
 
-        if (this._settings.get_boolean('auto-start-next'))
-            this._start();
-        else
+        if (completedSet) {
             this._updateUi();
+        } else if (this._settings.get_boolean('auto-start-next')) {
+            this._start();
+        } else if (completedNaturally) {
+            this._beginOvertime(completedAtUsec);
+        } else {
+            this._updateUi();
+        }
     }
 
     _notifyPhaseFinished(previousPhase) {
@@ -294,6 +358,8 @@ export default class PomodoroTimerExtension extends Extension {
                 ? 'Die lange Pause ist bereit.'
                 : 'Die kurze Pause ist bereit.';
             Main.notify('Pomodoro abgeschlossen', breakName);
+        } else if (previousPhase === Phase.LONG_BREAK) {
+            Main.notify('Pomodoro-Satz abgeschlossen', 'Alle Phasen sind beendet.');
         } else {
             Main.notify('Pause beendet', 'Zeit für die nächste Fokus-Runde.');
         }
@@ -492,27 +558,73 @@ export default class PomodoroTimerExtension extends Extension {
         return 'Kurze Pause';
     }
 
-    _formatTime(totalSeconds) {
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    _formatTime(totalSeconds, showMinus = false) {
+        const absoluteSeconds = Math.abs(totalSeconds);
+        const minutes = Math.floor(absoluteSeconds / 60);
+        const seconds = absoluteSeconds % 60;
+        const prefix = showMinus ? '-' : '';
+        return `${prefix}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    _mixColor(from, to, progress) {
+        return from.map((channel, index) => Math.round(
+            channel + (to[index] - channel) * progress));
+    }
+
+    _setTimerColor(color) {
+        const style = `color: rgb(${color.join(', ')});`;
+        this._panelLabel.set_style(style);
+        this._timeLabel.set_style(style);
+    }
+
+    _updateTimerColor(showOvertime) {
+        if (showOvertime) {
+            const progress = Math.min(
+                this._overtimeSeconds / MAX_OVERTIME_SECONDS, 1);
+            const color = progress <= 0.5
+                ? this._mixColor(COLOR_GREEN, COLOR_YELLOW, progress * 2)
+                : this._mixColor(COLOR_YELLOW, COLOR_RED, (progress - 0.5) * 2);
+            this._setTimerColor(color);
+            return;
+        }
+
+        const duration = this._durationForPhase(this._phase);
+        const progress = Math.min(Math.max(
+            1 - this._remainingSeconds / duration, 0), 1);
+        this._setTimerColor(this._mixColor(COLOR_WHITE, COLOR_GREEN, progress));
+    }
+
+    _clearTimerColor() {
+        this._panelLabel?.set_style(null);
+        this._timeLabel?.set_style(null);
     }
 
     _updateUi() {
         if (!this._panelLabel)
             return;
 
-        const time = this._formatTime(this._remainingSeconds);
+        const showOvertime = this._sessionActive && this._awaitingNextPhase;
+        const time = showOvertime
+            ? this._formatTime(this._overtimeSeconds, true)
+            : this._formatTime(this._remainingSeconds);
         this._panelLabel.text = time;
         this._phaseLabel.text = this._phaseDescription();
         this._timeLabel.text = time;
+
+        this._updateTimerColor(showOvertime);
 
         this._startPauseItem.label.text = this._running ? 'Pausieren' : 'Starten';
         this._startPauseItem.setIcon(this._running
             ? 'media-playback-pause-symbolic'
             : 'media-playback-start-symbolic');
 
-        const accessibleState = this._running ? 'läuft' : 'pausiert';
+        let accessibleState = 'pausiert';
+        if (this._running)
+            accessibleState = 'läuft';
+        else if (showOvertime)
+            accessibleState = 'wartet auf den Start der nächsten Phase';
+        else if (!this._sessionActive)
+            accessibleState = 'inaktiv';
         this._indicator.accessible_name = `Pomodoro, ${this._phaseDescription()}, ${time}, ${accessibleState}`;
     }
 }
