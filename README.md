@@ -9,7 +9,7 @@ Eine kleine GNOME-Shell-Erweiterung für GNOME 48 bis 50.
 - Starten, pausieren, stoppen/zurücksetzen und überspringen
 - Optionaler automatischer Start der nächsten Phase innerhalb eines Satzes
 - Überziehungsanzeige nach Phasenende (`-00:01`, `-00:02`, …) bis zum Start der Folgephase
-- Farbverlauf von Weiß am Phasenstart zu Grün bei `00:00`, danach nahtlos bis maximal Rot bei `-10:00`
+- Gesamter Panel-Indikator mit Farbverlauf von Weiß am Phasenstart zu Grün bei `00:00`, danach nahtlos bis maximal Rot bei `-10:00`
 - Automatischer Stopp nach Ende der langen Pause bzw. des vollständigen Satzes
 - Optionale Desktop-Benachrichtigungen
 - Aufgabenliste mit Abhaken und dauerhafter Speicherung

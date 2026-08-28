@@ -4,5 +4,5 @@
   "uuid": "pomodoro-timer@local",
   "settings-schema": "org.gnome.shell.extensions.pomodoro-timer",
   "shell-version": ["48", "49", "50"],
-  "version": 7
+  "version": 8
 }

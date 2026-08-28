@@ -58,7 +58,9 @@ export default class PomodoroTimerExtension extends Extension {
         this._settingsSignalIds = [];
         this._indicator?.destroy();
         this._indicator = null;
+        this._panelBox = null;
         this._timerBox = null;
+        this._timerIcon = null;
         this._panelLabel = null;
         this._tickerLabel = null;
         this._phaseLabel = null;
@@ -78,6 +80,7 @@ export default class PomodoroTimerExtension extends Extension {
             style_class: 'panel-status-menu-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._panelBox = box;
 
         this._tickerLabel = new St.Label({
             style_class: 'pomodoro-task-ticker',
@@ -89,10 +92,11 @@ export default class PomodoroTimerExtension extends Extension {
         this._timerBox = new St.BoxLayout({
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._timerBox.add_child(new St.Icon({
+        this._timerIcon = new St.Icon({
             icon_name: 'alarm-symbolic',
             style_class: 'system-status-icon',
-        }));
+        });
+        this._timerBox.add_child(this._timerIcon);
 
         this._panelLabel = new St.Label({
             style_class: 'pomodoro-panel-label',
@@ -573,8 +577,14 @@ export default class PomodoroTimerExtension extends Extension {
 
     _setTimerColor(color) {
         const style = `color: rgb(${color.join(', ')});`;
-        this._panelLabel.set_style(style);
-        this._timeLabel.set_style(style);
+        for (const actor of [
+            this._panelBox,
+            this._tickerLabel,
+            this._timerIcon,
+            this._panelLabel,
+            this._timeLabel,
+        ])
+            actor?.set_style(style);
     }
 
     _updateTimerColor(showOvertime) {
@@ -595,8 +605,14 @@ export default class PomodoroTimerExtension extends Extension {
     }
 
     _clearTimerColor() {
-        this._panelLabel?.set_style(null);
-        this._timeLabel?.set_style(null);
+        for (const actor of [
+            this._panelBox,
+            this._tickerLabel,
+            this._timerIcon,
+            this._panelLabel,
+            this._timeLabel,
+        ])
+            actor?.set_style(null);
     }
 
     _updateUi() {
